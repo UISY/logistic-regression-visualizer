@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Logistic Regression Visualizer</title>
+<meta name="description" content="Interaktive Lern-App für logistische Regression und binäre Klassifikation.">
+<style>
+:root{
+  --bg:#f5f7ff;--card:#fff;--soft:#f8faff;--text:#172033;--muted:#68758a;--line:#dce4f4;
+  --accent:#6c5ce7;--accent2:#00b8d9;--accent3:#ff8f3d;--good:#168a58;--bad:#c63d3d;
+  --shadow:0 16px 42px rgba(35,54,110,.11);--grid:#e8edf8;--axis:#8c98aa
+}
+[data-theme="dark"]{
+  --bg:#0c1118;--card:#151b24;--soft:#101720;--text:#edf2ff;--muted:#9ca9bb;--line:#2a3544;
+  --accent:#9a8cff;--accent2:#43d4f1;--accent3:#ffae73;--good:#79e2ad;--bad:#ff9999;
+  --shadow:0 18px 48px rgba(0,0,0,.34);--grid:#26313e;--axis:#7b8798
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at 8% 0%,rgba(108,92,231,.11),transparent 26%),
+    radial-gradient(circle at 92% 8%,rgba(0,184,217,.10),transparent 24%),
+    var(--bg);
+  transition:.25s
+}
+.topbar{
+  display:flex;justify-content:space-between;gap:24px;align-items:flex-start;
+  padding:34px clamp(20px,5vw,64px) 22px;
+  background:linear-gradient(120deg,color-mix(in srgb,var(--accent) 12%,var(--card)),color-mix(in srgb,var(--accent2) 10%,var(--card)) 55%,color-mix(in srgb,var(--accent3) 12%,var(--card)));
+  border-bottom:1px solid var(--line)
+}
+.eyebrow{font-size:.8rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(2.2rem,4vw,3.4rem);margin:.25rem 0 .4rem;line-height:1.04}
+.topbar p{margin:0;color:var(--muted);font-size:1.04rem}
+.header-actions{display:flex;gap:10px;flex-wrap:wrap}
+button{
+  border:0;border-radius:13px;padding:11px 15px;font-weight:900;cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;
+  transition:.15s
+}
+button:hover{transform:translateY(-1px);filter:brightness(1.04);box-shadow:0 8px 20px rgba(108,92,231,.18)}
+.theme-toggle{background:var(--card);color:var(--text);border:1px solid var(--line);box-shadow:var(--shadow)}
+.layout{max-width:1500px;margin:auto;padding:26px clamp(20px,5vw,64px) 42px;display:grid;grid-template-columns:300px 1fr;gap:24px}
+.panel,.content{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
+.controls{padding:22px;position:sticky;top:16px;height:max-content}
+.controls h2{margin:0 0 8px}
+.helper{font-size:.9rem;color:var(--muted);line-height:1.45;margin:0 0 6px}
+.controls label,.predict-card label{display:flex;justify-content:space-between;gap:12px;margin-top:18px;font-weight:800}
+.controls input,.predict-card input{width:100%;accent-color:var(--accent)}
+.content{padding:20px;min-width:0}
+.tabs{display:flex;gap:9px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px}
+.tab{background:var(--soft);color:var(--text);border:1px solid var(--line)}
+.tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;border-color:transparent}
+.tab-panel{display:none;padding:24px 2px 4px;animation:fade .2s ease}
+.tab-panel.active{display:block}
+@keyframes fade{from{opacity:.45;transform:translateY(3px)}to{opacity:1;transform:none}}
+.hero-card{
+  border:1px solid var(--line);border-radius:20px;padding:24px;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 10%,var(--card)),var(--card) 60%,color-mix(in srgb,var(--accent2) 8%,var(--card)))
+}
+.badge{display:inline-block;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;padding:7px 10px;border-radius:999px;font-size:.76rem;font-weight:900;letter-spacing:.08em}
+.three-col{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
+.info-card,.chart-card,.metric,.predict-card,.mini-card{border:1px solid var(--line);border-radius:18px;background:var(--card)}
+.info-card{padding:18px}
+.info-card:nth-child(1){box-shadow:inset 0 4px 0 var(--accent)}
+.info-card:nth-child(2){box-shadow:inset 0 4px 0 var(--accent2)}
+.info-card:nth-child(3){box-shadow:inset 0 4px 0 var(--accent3)}
+.formula{font-size:clamp(1.7rem,4vw,3.4rem);text-align:center;padding:26px;margin:18px 0;border-radius:20px;background:var(--soft);border:1px dashed var(--line);font-family:Georgia,serif}
+.callout{display:inline-flex;gap:8px;align-items:center;padding:8px 11px;border:1px solid var(--line);border-radius:999px;background:var(--soft);color:var(--muted);font-size:.9rem;font-weight:800}
+.chart-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(250px,1fr);gap:18px}
+.chart-card{padding:12px;overflow:hidden;background:linear-gradient(180deg,var(--card),var(--soft))}
+.chart-card svg{width:100%;height:auto;display:block}
+.metrics{display:grid;gap:10px}
+.metric{padding:14px;position:relative;overflow:hidden}
+.metric::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(var(--accent),var(--accent2))}
+.metric span{display:block;color:var(--muted);font-size:.85rem}
+.metric strong{font-size:1.5rem}
+.confusion{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.mini-card{padding:14px}
+.mini-card strong{font-size:1.35rem}
+.good{color:var(--good)}.bad{color:var(--bad)}
+.predict-card{padding:20px;background:linear-gradient(135deg,var(--card),color-mix(in srgb,var(--accent2) 7%,var(--card)))}
+.result{margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--soft)}
+.probbar{height:16px;border-radius:999px;background:var(--line);overflow:hidden;margin:10px 0}
+.probfill{height:100%;width:50%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
+details{margin-top:18px;border:1px solid var(--line);border-radius:14px;background:var(--soft);padding:14px}
+summary{cursor:pointer;font-weight:900}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin-top:12px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right}
+th:first-child,td:first-child{text-align:left}
+.table-wrap{overflow:auto}
+.axis{stroke:var(--axis);stroke-width:1.2}.grid{stroke:var(--grid);stroke-width:1}
+.sigmoid{stroke:var(--accent);stroke-width:4;fill:none}
+.threshold{stroke:var(--accent3);stroke-width:2;stroke-dasharray:7 6}
+.point0{fill:#ff8f3d;stroke:var(--card);stroke-width:2}
+.point1{fill:#00b8d9;stroke:var(--card);stroke-width:2}
+.tick,.axis-label{fill:var(--muted);font-size:13px}.axis-label{font-weight:800}
+footer{text-align:center;color:var(--muted);padding:0 20px 32px}
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}.controls{position:static}.three-col{grid-template-columns:1fr}.chart-grid{grid-template-columns:1fr}.topbar{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <div class="eyebrow">ML Learning Lab · Projekt 2</div>
+    <h1>🧭 Logistic Regression Visualizer</h1>
+    <p>Verstehen → Wahrscheinlichkeit sehen → Schwelle verändern → selbst klassifizieren</p>
+  </div>
+  <div class="header-actions">
+    <button id="themeToggle" class="theme-toggle" type="button">🌙 Dunkelmodus</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="panel controls">
+    <h2>🎛️ Klassifikations-Labor</h2>
+    <p class="helper">Verändere Daten und Entscheidungsschwelle. Beobachte direkt, wie sich Klassifikation und Kennzahlen ändern.</p>
+
+    <label>Anzahl Datenpunkte <span id="nVal">30</span></label>
+    <input id="n" type="range" min="12" max="80" value="30" step="1">
+
+    <label>Trennschärfe <span id="sepVal">1.6</span></label>
+    <input id="sep" type="range" min="0.5" max="3.5" value="1.6" step="0.1">
+
+    <label>Rauschen <span id="noiseVal">0.8</span></label>
+    <input id="noise" type="range" min="0" max="2.5" value="0.8" step="0.1">
+
+    <label>Schwelle <span id="thresholdVal">0.50</span></label>
+    <input id="threshold" type="range" min="0.1" max="0.9" value="0.5" step="0.05">
+
+    <label>Zufalls-Seed <span id="seedVal">42</span></label>
+    <input id="seed" type="range" min="0" max="100" value="42" step="1">
+  </aside>
+
+  <section class="content">
+    <nav class="tabs">
+      <button class="tab active" data-tab="understand">1️⃣ Verstehen</button>
+      <button class="tab" data-tab="explore">2️⃣ Ausprobieren</button>
+      <button class="tab" data-tab="predict">3️⃣ Klassifizieren</button>
+    </nav>
+
+    <section id="understand" class="tab-panel active">
+      <div class="hero-card">
+        <span class="badge">SCHRITT 1</span>
+        <h2>Was macht logistische Regression?</h2>
+        <p>Sie sagt nicht direkt eine beliebige Zahl voraus, sondern zuerst eine <strong>Wahrscheinlichkeit zwischen 0 und 1</strong>. Daraus wird anschließend eine Klasse abgeleitet, zum Beispiel <strong>0 = kein Ausfall</strong> und <strong>1 = Ausfall</strong>.</p>
+      </div>
+
+      <div class="three-col">
+        <article class="info-card"><h3>Eingabe x</h3><p>Zum Beispiel Temperatur, Verschleiß oder Messwert.</p></article>
+        <article class="info-card"><h3>Wahrscheinlichkeit</h3><p>Das Modell berechnet P(Klasse 1).</p></article>
+        <article class="info-card"><h3>Klasse</h3><p>Ab einer Schwelle wird aus der Wahrscheinlichkeit Klasse 1.</p></article>
+      </div>
+
+      <div class="formula">p = 1 / (1 + e<sup>−(b₀+b₁x)</sup>)</div>
+      <p>Die typische S-Kurve heißt <strong>Sigmoidfunktion</strong>. Kleine x-Werte liegen eher nahe 0, große x-Werte eher nahe 1. Die Entscheidungsschwelle ist standardmäßig oft 0,5 – sie kann aber je nach Anwendung angepasst werden.</p>
+    </section>
+
+    <section id="explore" class="tab-panel">
+      <h2>📊 Wahrscheinlichkeit und Entscheidung</h2>
+      <p>Die Punkte zeigen echte Klassen. Die Kurve zeigt die vom Modell gelernte Wahrscheinlichkeit für Klasse 1.</p>
+      <span class="callout">💡 Tipp: Verschiebe die Schwelle und beobachte Precision und Recall.</span>
+
+      <div class="chart-grid" style="margin-top:16px">
+        <div class="chart-card"><svg id="chart" viewBox="0 0 820 500" aria-label="Logistische Regressionskurve"></svg></div>
+        <div class="metrics">
+          <div class="metric"><span>Accuracy</span><strong id="accuracy">–</strong></div>
+          <div class="metric"><span>Precision</span><strong id="precision">–</strong></div>
+          <div class="metric"><span>Recall</span><strong id="recall">–</strong></div>
+          <div class="metric"><span>F1-Score</span><strong id="f1">–</strong></div>
+
+          <div class="confusion">
+            <div class="mini-card"><span>True Positive</span><br><strong id="tp" class="good">–</strong></div>
+            <div class="mini-card"><span>True Negative</span><br><strong id="tn" class="good">–</strong></div>
+            <div class="mini-card"><span>False Positive</span><br><strong id="fp" class="bad">–</strong></div>
+            <div class="mini-card"><span>False Negative</span><br><strong id="fn" class="bad">–</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <details>
+        <summary>Was bedeutet die Schwelle?</summary>
+        <p>Liegt die vorhergesagte Wahrscheinlichkeit über der Schwelle, wird Klasse 1 vorhergesagt. Eine niedrigere Schwelle erkennt meist mehr positive Fälle, erzeugt aber oft auch mehr False Positives.</p>
+      </details>
+    </section>
+
+    <section id="predict" class="tab-panel">
+      <h2>🎯 Klassifiziere einen neuen Wert</h2>
+      <div class="predict-card">
+        <label>Neuer x-Wert <span id="predXVal">0.0</span></label>
+        <input id="predX" type="range" min="-4" max="4" value="0" step="0.1">
+        <div class="result">
+          <div>Wahrscheinlichkeit für Klasse 1: <strong id="predProb">–</strong></div>
+          <div class="probbar"><div id="probFill" class="probfill"></div></div>
+          <div>Entscheidung bei Schwelle <strong id="predThreshold">0.50</strong>: <strong id="predClass">–</strong></div>
+        </div>
+      </div>
+      <div class="chart-card" style="margin-top:16px"><svg id="predChart" viewBox="0 0 820 420" aria-label="Vorhersage eines neuen Wertes"></svg></div>
+    </section>
+
+    <details>
+      <summary>📋 Aktuelle Trainingsdaten anzeigen</summary>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>x</th><th>Echte Klasse</th><th>P(Klasse 1)</th><th>Vorhersage</th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+</main>
+
+<footer>ML Learning Lab · Projekt 2 · Logistische Regression · Läuft komplett im Browser</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const state={data:[],b0:0,b1:0};
+
+function mulberry32(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
+function gaussian(r){let u=0,v=0;while(!u)u=r();while(!v)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
+function sigmoid(z){return 1/(1+Math.exp(-Math.max(-30,Math.min(30,z))))}
+function prob(x){return sigmoid(state.b0+state.b1*x)}
+
+function applyTheme(theme){
+  document.documentElement.setAttribute("data-theme",theme);
+  $("themeToggle").textContent=theme==="dark"?"☀️ Hellmodus":"🌙 Dunkelmodus";
+}
+const saved=localStorage.getItem("ml-theme");
+applyTheme(saved||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"));
+$("themeToggle").addEventListener("click",()=>{
+  const next=document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark";
+  localStorage.setItem("ml-theme",next);applyTheme(next)
+});
+
+function generate(){
+  const n=+$("n").value,sep=+$("sep").value,noise=+$("noise").value,seed=+$("seed").value;
+  const r=mulberry32(seed+1);state.data=[];
+  for(let i=0;i<n;i++){
+    const y=i<n/2?0:1;
+    const center=y?sep:-sep;
+    const x=center+gaussian(r)*(0.75+noise*0.45);
+    state.data.push({x,y})
+  }
+  fit();
+  update()
+}
+
+function fit(){
+  let b0=0,b1=0,lr=.08;
+  for(let e=0;e<1800;e++){
+    let g0=0,g1=0;
+    for(const d of state.data){
+      const p=sigmoid(b0+b1*d.x),err=p-d.y;
+      g0+=err;g1+=err*d.x
+    }
+    b0-=lr*g0/state.data.length;
+    b1-=lr*g1/state.data.length
+  }
+  state.b0=b0;state.b1=b1
+}
+
+function metrics(){
+  const th=+$("threshold").value;
+  let tp=0,tn=0,fp=0,fn=0;
+  for(const d of state.data){
+    const pred=prob(d.x)>=th?1:0;
+    if(d.y===1&&pred===1)tp++;
+    else if(d.y===0&&pred===0)tn++;
+    else if(d.y===0&&pred===1)fp++;
+    else fn++
+  }
+  const acc=(tp+tn)/(tp+tn+fp+fn);
+  const prec=tp+fp?tp/(tp+fp):0;
+  const rec=tp+fn?tp/(tp+fn):0;
+  const f1=prec+rec?2*prec*rec/(prec+rec):0;
+  return{tp,tn,fp,fn,acc,prec,rec,f1}
+}
+
+function update(){
+  $("nVal").textContent=$("n").value;
+  $("sepVal").textContent=(+$("sep").value).toFixed(1);
+  $("noiseVal").textContent=(+$("noise").value).toFixed(1);
+  $("thresholdVal").textContent=(+$("threshold").value).toFixed(2);
+  $("seedVal").textContent=$("seed").value;
+  const m=metrics();
+  $("accuracy").textContent=(m.acc*100).toFixed(1)+"%";
+  $("precision").textContent=(m.prec*100).toFixed(1)+"%";
+  $("recall").textContent=(m.rec*100).toFixed(1)+"%";
+  $("f1").textContent=m.f1.toFixed(3);
+  $("tp").textContent=m.tp;$("tn").textContent=m.tn;$("fp").textContent=m.fp;$("fn").textContent=m.fn;
+  updatePrediction();
+  drawAll();
+  fillRows()
+}
+
+function svgEl(name,attrs={}){const e=document.createElementNS("http://www.w3.org/2000/svg",name);for(const[k,v]of Object.entries(attrs))e.setAttribute(k,v);return e}
+function draw(svg,withPrediction=false){
+  svg.innerHTML="";
+  const W=820,H=withPrediction?420:500,M={l:66,r:24,t:26,b:56};
+  const xmin=-4.5,xmax=4.5,ymin=-.08,ymax=1.08;
+  const sx=x=>M.l+(x-xmin)/(xmax-xmin)*(W-M.l-M.r);
+  const sy=y=>H-M.b-(y-ymin)/(ymax-ymin)*(H-M.t-M.b);
+
+  for(let i=0;i<=5;i++){
+    const y=i/5,yy=sy(y);
+    svg.appendChild(svgEl("line",{x1:M.l,x2:W-M.r,y1:yy,y2:yy,class:"grid"}));
+    const t=svgEl("text",{x:M.l-10,y:yy+4,"text-anchor":"end",class:"tick"});t.textContent=y.toFixed(1);svg.appendChild(t)
+  }
+  for(let i=-4;i<=4;i++){
+    const xx=sx(i);
+    svg.appendChild(svgEl("line",{x1:xx,x2:xx,y1:M.t,y2:H-M.b,class:"grid"}));
+    const t=svgEl("text",{x:xx,y:H-M.b+24,"text-anchor":"middle",class:"tick"});t.textContent=i;svg.appendChild(t)
+  }
+  svg.appendChild(svgEl("line",{x1:M.l,x2:W-M.r,y1:H-M.b,y2:H-M.b,class:"axis"}));
+  svg.appendChild(svgEl("line",{x1:M.l,x2:M.l,y1:M.t,y2:H-M.b,class:"axis"}));
+
+  let path="";
+  for(let i=0;i<=180;i++){
+    const x=xmin+(xmax-xmin)*i/180,y=prob(x);
+    path+=(i?"L":"M")+sx(x)+" "+sy(y)+" "
+  }
+  svg.appendChild(svgEl("path",{d:path,class:"sigmoid"}));
+
+  const th=+$("threshold").value;
+  svg.appendChild(svgEl("line",{x1:M.l,x2:W-M.r,y1:sy(th),y2:sy(th),class:"threshold"}));
+
+  for(const d of state.data){
+    const jitter=d.y===0?-0.025:0.025;
+    svg.appendChild(svgEl("circle",{cx:sx(d.x),cy:sy(d.y+jitter),r:7,class:d.y?"point1":"point0"}))
+  }
+
+  if(withPrediction){
+    const x=+$("predX").value,p=prob(x);
+    svg.appendChild(svgEl("line",{x1:sx(x),x2:sx(x),y1:M.t,y2:H-M.b,class:"threshold"}));
+    svg.appendChild(svgEl("circle",{cx:sx(x),cy:sy(p),r:11,fill:"white",stroke:"var(--accent)", "stroke-width":"5"}))
+  }
+
+  let tx=svgEl("text",{x:(M.l+W-M.r)/2,y:H-12,"text-anchor":"middle",class:"axis-label"});tx.textContent="x";svg.appendChild(tx);
+  let ty=svgEl("text",{x:18,y:(M.t+H-M.b)/2,transform:"rotate(-90 18 "+((M.t+H-M.b)/2)+")","text-anchor":"middle",class:"axis-label"});ty.textContent="P(Klasse 1)";svg.appendChild(ty)
+}
+function drawAll(){draw($("chart"));draw($("predChart"),true)}
+
+function updatePrediction(){
+  const x=+$("predX").value,p=prob(x),th=+$("threshold").value,c=p>=th?1:0;
+  $("predXVal").textContent=x.toFixed(1);
+  $("predProb").textContent=(p*100).toFixed(1)+"%";
+  $("probFill").style.width=(p*100).toFixed(1)+"%";
+  $("predThreshold").textContent=th.toFixed(2);
+  $("predClass").textContent="Klasse "+c
+}
+
+function fillRows(){
+  const th=+$("threshold").value,b=$("rows");b.innerHTML="";
+  [...state.data].sort((a,b)=>a.x-b.x).forEach(d=>{
+    const p=prob(d.x),pred=p>=th?1:0,tr=document.createElement("tr");
+    tr.innerHTML="<td>"+d.x.toFixed(2)+"</td><td>"+d.y+"</td><td>"+p.toFixed(3)+"</td><td>"+pred+"</td>";
+    b.appendChild(tr)
+  })
+}
+
+["n","sep","noise","seed"].forEach(id=>$(id).addEventListener("input",generate));
+$("threshold").addEventListener("input",update);
+$("predX").addEventListener("input",()=>{updatePrediction();drawAll()});
+document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
+  document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+  btn.classList.add("active");$(btn.dataset.tab).classList.add("active")
+}));
+
+generate();
+</script>
+</body>
+</html>
